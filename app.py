@@ -6,10 +6,28 @@ import re
 import numpy as np
 from urllib.parse import urlparse, parse_qs
 import base64
+import logging
+import sys
 from migration_pb2 import parse_migration_payload
 
 app = Flask(__name__)
 CORS(app)
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # 输出到控制台
+    ]
+)
+
+# 获取 logger
+logger = logging.getLogger(__name__)
+logger.info("=" * 60)
+logger.info("Google 2FA 应用启动")
+logger.info("=" * 60)
 
 def extract_secret_from_otpauth(url):
     """从 otpauth URL 中提取密钥"""
@@ -35,7 +53,7 @@ def extract_secret_from_otpauth(url):
         
         return None
     except Exception as e:
-        print(f"解析 URL 错误: {e}")
+        logger.error(f"解析 URL 错误: {e}", exc_info=True)
         return None
 
 def extract_secrets_from_migration(data_base64):
@@ -59,9 +77,7 @@ def extract_secrets_from_migration(data_base64):
         else:
             return None
     except Exception as e:
-        print(f"解析迁移格式错误: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"解析迁移格式错误: {e}", exc_info=True)
         return None
 
 def parse_qr_code(image_data):
@@ -250,12 +266,16 @@ def parse_qr_code(image_data):
         
         # 检查是否是 otpauth URL
         if qr_data.startswith('otpauth://'):
+            logger.info(f"检测到标准 otpauth 格式")
             secret = extract_secret_from_otpauth(qr_data)
             if secret:
+                logger.info(f"成功提取密钥，长度: {len(secret)}")
                 return secret, None
             else:
+                logger.warning("无法从 otpauth URL 中提取密钥")
                 return None, "无法从二维码中提取密钥"
         elif qr_data.startswith('otpauth-migration://'):
+            logger.info(f"检测到迁移格式 (otpauth-migration)")
             # Google Authenticator 迁移格式
             try:
                 parsed = urlparse(qr_data)
@@ -263,17 +283,22 @@ def parse_qr_code(image_data):
                 
                 if 'data' in query_params:
                     data_base64 = query_params['data'][0]
+                    logger.info(f"开始解析迁移数据，数据长度: {len(data_base64)}")
                     # 从迁移格式中提取账户信息
                     accounts = extract_secrets_from_migration(data_base64)
                     
                     if accounts and len(accounts) > 0:
+                        logger.info(f"成功解析迁移格式，提取到 {len(accounts)} 个账户")
                         # 返回账户列表（特殊格式，前端需要处理）
                         return accounts, None
                     else:
+                        logger.warning("无法从迁移格式中提取账户")
                         return None, "无法从迁移格式中提取密钥。请确保迁移数据格式正确。"
                 else:
+                    logger.warning("迁移格式缺少 data 参数")
                     return None, "迁移格式缺少 data 参数"
             except Exception as e:
+                logger.error(f"解析迁移格式时出错: {str(e)}", exc_info=True)
                 return None, f"解析迁移格式时出错: {str(e)}"
         else:
             # 如果不是 otpauth URL，可能直接是密钥
@@ -283,10 +308,22 @@ def parse_qr_code(image_data):
             else:
                 return None, f"二维码内容不是有效的 2FA 格式: {qr_data[:50]}"
     
-    except ImportError:
+    except ImportError as e:
+        logger.error(f"缺少必要的库: {e}")
         return None, "缺少 opencv-python 库，请安装: pip install opencv-python"
     except Exception as e:
+        logger.error(f"解析二维码时出错: {str(e)}", exc_info=True)
         return None, f"解析二维码时出错: {str(e)}"
+
+# 请求日志中间件
+@app.before_request
+def log_request_info():
+    logger.info(f"[{request.remote_addr}] {request.method} {request.path}")
+
+@app.after_request
+def log_response_info(response):
+    logger.info(f"[{request.remote_addr}] {request.method} {request.path} - 状态码: {response.status_code}")
+    return response
 
 @app.route('/')
 def index():
@@ -294,26 +331,34 @@ def index():
 
 @app.route('/api/convert', methods=['POST'])
 def convert_qr():
+    client_ip = request.remote_addr
+    logger.info(f"[{client_ip}] 收到二维码转换请求")
+    
     try:
         if 'image' not in request.files:
+            logger.warning(f"[{client_ip}] 请求中未包含图片文件")
             return jsonify({'success': False, 'error': '未上传图片'}), 400
         
         file = request.files['image']
         if file.filename == '':
+            logger.warning(f"[{client_ip}] 未选择文件")
             return jsonify({'success': False, 'error': '未选择文件'}), 400
         
-        # 读取图片数据
+        logger.info(f"[{client_ip}] 开始解析二维码，文件名: {file.filename}, 大小: {len(file.read())} 字节")
+        file.seek(0)  # 重置文件指针
         image_data = file.read()
         
         # 解析二维码
         result, error = parse_qr_code(image_data)
         
         if error:
+            logger.warning(f"[{client_ip}] 二维码解析失败: {error}")
             return jsonify({'success': False, 'error': error}), 400
         
         if result:
             # 检查是否是账户列表（迁移格式）
             if isinstance(result, list):
+                logger.info(f"[{client_ip}] 成功解析迁移格式，提取到 {len(result)} 个账户")
                 # 格式化账户列表
                 formatted_accounts = []
                 for account in result:
@@ -326,6 +371,7 @@ def convert_qr():
                         'digits': account.get('digits', 6),
                         'type': account.get('type', 'TOTP')
                     })
+                    logger.debug(f"[{client_ip}] 账户: {account.get('name', '未知')} ({account.get('issuer', '未知')})")
                 return jsonify({
                     'success': True,
                     'is_migration': True,
@@ -333,6 +379,7 @@ def convert_qr():
                     'count': len(formatted_accounts)
                 })
             else:
+                logger.info(f"[{client_ip}] 成功提取单个密钥")
                 # 单个密钥（标准格式）
                 return jsonify({
                     'success': True,
@@ -341,9 +388,11 @@ def convert_qr():
                     'formatted_secret': format_secret(result)
                 })
         else:
+            logger.warning(f"[{client_ip}] 无法提取密钥")
             return jsonify({'success': False, 'error': '无法提取密钥'}), 400
     
     except Exception as e:
+        logger.error(f"[{client_ip}] 服务器错误: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f'服务器错误: {str(e)}'}), 500
 
 def format_secret(secret):
@@ -356,5 +405,13 @@ def format_secret(secret):
 if __name__ == '__main__':
     import os
     debug_mode = os.getenv('FLASK_ENV') != 'production'
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 5000))
+    
+    logger.info(f"启动 Flask 应用")
+    logger.info(f"  调试模式: {debug_mode}")
+    logger.info(f"  监听地址: 0.0.0.0:{port}")
+    logger.info(f"  环境变量: FLASK_ENV={os.getenv('FLASK_ENV', 'development')}")
+    logger.info("=" * 60)
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
 

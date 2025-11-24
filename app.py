@@ -368,6 +368,8 @@ def allowed_file(filename):
 
 def save_uploaded_image(file, client_ip):
     """保存上传的图片到服务器"""
+    global UPLOAD_DIR_WRITABLE
+    
     # 如果目录不可写，直接返回
     if not UPLOAD_DIR_WRITABLE:
         logger.debug(f"[{client_ip}] 上传目录不可写，跳过保存")
@@ -402,7 +404,6 @@ def save_uploaded_image(file, client_ip):
     except PermissionError as e:
         logger.error(f"[{client_ip}] 保存图片权限错误: {str(e)}")
         # 尝试重新检查目录权限
-        global UPLOAD_DIR_WRITABLE
         UPLOAD_DIR_WRITABLE = ensure_upload_directory()
         return None, None
     except Exception as e:

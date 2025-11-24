@@ -73,17 +73,28 @@ http://localhost:5000
 
 1. **克隆或上传项目文件到服务器**
 
-2. **构建并启动容器**：
+2. **设置数据目录权限**（重要）：
+```bash
+# 创建数据目录
+mkdir -p ./data/uploads
+
+# 设置权限（容器内用户 ID 为 1000）
+sudo chown -R 1000:1000 ./data
+# 或者设置更宽松的权限
+sudo chmod -R 755 ./data
+```
+
+3. **构建并启动容器**：
 ```bash
 docker-compose up -d
 ```
 
-3. **查看日志**：
+4. **查看日志**：
 ```bash
 docker-compose logs -f
 ```
 
-4. **访问应用**：
+5. **访问应用**：
 ```
 http://服务器IP:5000
 ```
@@ -130,4 +141,32 @@ docker run -d -p 5000:5000 --name google-2fa --restart unless-stopped google-2fa
 - 支持 Google Authenticator 迁移格式（包含多个账户）
 - 密钥格式为 Base32 编码
 - 如果遇到 DLL 错误，请确保已卸载 pyzbar 并重新安装依赖
+
+### Docker 部署权限问题
+
+如果遇到 `Permission denied` 错误，请确保：
+
+1. **主机目录权限正确**：
+```bash
+# 设置数据目录的所有者为容器用户（UID 1000）
+sudo chown -R 1000:1000 ./data
+
+# 或者设置更宽松的权限
+sudo chmod -R 755 ./data
+```
+
+2. **检查容器内权限**：
+```bash
+# 进入容器检查
+docker exec -it google-2fa ls -la /app/data/uploads
+
+# 测试写入权限
+docker exec -it google-2fa touch /app/data/uploads/test.txt
+```
+
+3. **如果仍有问题**，可以临时使用 root 用户（不推荐生产环境）：
+在 `docker-compose.yml` 中添加：
+```yaml
+user: "0:0"  # root 用户
+```
 

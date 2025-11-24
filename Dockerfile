@@ -25,11 +25,19 @@ COPY app.py .
 COPY migration_pb2.py .
 COPY templates/ ./templates/
 
-# 创建数据目录
-RUN mkdir -p /app/data/uploads
-
 # 创建非 root 用户
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser
+
+# 创建数据目录并设置权限（在切换用户之前）
+RUN mkdir -p /app/data/uploads && \
+    chown -R appuser:appuser /app
+
+# 复制启动脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown appuser:appuser /entrypoint.sh
+
+# 切换到非 root 用户
 USER appuser
 
 # 暴露端口
@@ -39,6 +47,7 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 
-# 启动应用
+# 使用启动脚本
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "app.py"]
 

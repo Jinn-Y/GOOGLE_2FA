@@ -43,3 +43,6 @@ install.bat
 # Temporary files
 *.tmp
 *.bak
+
+# Upload data (keep in .gitignore, but allow in Docker)
+# data/

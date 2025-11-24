@@ -25,6 +25,9 @@ COPY app.py .
 COPY migration_pb2.py .
 COPY templates/ ./templates/
 
+# 创建数据目录
+RUN mkdir -p /app/data/uploads
+
 # 创建非 root 用户
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser

@@ -12,9 +12,9 @@ services:
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
+      - UPLOAD_FOLDER=/app/data/uploads
     volumes:
-    #   # 如果需要持久化数据，可以添加卷
-    - ./data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()"]
       interval: 30s

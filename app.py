@@ -17,18 +17,7 @@ from migration_pb2 import parse_migration_payload
 app = Flask(__name__)
 CORS(app)
 
-# 配置上传目录
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/data/uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
-
-# 确保上传目录存在
-try:
-    Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
-    logger.info(f"图片上传目录: {UPLOAD_FOLDER}")
-except Exception as e:
-    logger.warning(f"无法创建上传目录 {UPLOAD_FOLDER}: {e}，图片将不会被保存")
-
-# 配置日志
+# 配置日志（必须在其他代码之前）
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
@@ -43,6 +32,17 @@ logger = logging.getLogger(__name__)
 logger.info("=" * 60)
 logger.info("Google 2FA 应用启动")
 logger.info("=" * 60)
+
+# 配置上传目录
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/data/uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+
+# 确保上传目录存在
+try:
+    Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
+    logger.info(f"图片上传目录: {UPLOAD_FOLDER}")
+except Exception as e:
+    logger.warning(f"无法创建上传目录 {UPLOAD_FOLDER}: {e}，图片将不会被保存")
 
 def extract_secret_from_otpauth(url):
     """从 otpauth URL 中提取密钥"""

@@ -36,6 +36,7 @@ README.md
 # Install scripts
 install.bat
 *.sh
+!entrypoint.sh
 
 # Logs
 *.log

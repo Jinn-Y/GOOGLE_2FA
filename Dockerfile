@@ -25,17 +25,16 @@ COPY app.py .
 COPY migration_pb2.py .
 COPY templates/ ./templates/
 
+# 复制启动脚本（在切换用户之前）
+COPY entrypoint.sh /entrypoint.sh
+
 # 创建非 root 用户
 RUN useradd -m -u 1000 appuser
 
 # 创建数据目录并设置权限（在切换用户之前）
 RUN mkdir -p /app/data/uploads && \
+    chmod +x /entrypoint.sh && \
     chown -R appuser:appuser /app
-
-# 复制启动脚本
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && \
-    chown appuser:appuser /entrypoint.sh
 
 # 切换到非 root 用户
 USER appuser

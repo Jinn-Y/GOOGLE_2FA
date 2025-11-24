@@ -9,9 +9,6 @@ import base64
 import logging
 import sys
 import os
-from pathlib import Path
-from datetime import datetime
-from werkzeug.utils import secure_filename
 from migration_pb2 import parse_migration_payload
 
 app = Flask(__name__)
@@ -33,33 +30,8 @@ logger.info("=" * 60)
 logger.info("Google 2FA 应用启动")
 logger.info("=" * 60)
 
-# 配置上传目录
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/data/uploads')
+# 允许的文件扩展名
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
-
-# 确保上传目录存在并检查权限
-def ensure_upload_directory():
-    """确保上传目录存在且可写"""
-    try:
-        upload_path = Path(UPLOAD_FOLDER)
-        upload_path.mkdir(parents=True, exist_ok=True)
-        
-        # 检查目录是否可写
-        test_file = upload_path / '.write_test'
-        try:
-            test_file.touch()
-            test_file.unlink()
-            logger.info(f"图片上传目录: {UPLOAD_FOLDER} (可写)")
-            return True
-        except PermissionError:
-            logger.error(f"上传目录 {UPLOAD_FOLDER} 无写入权限")
-            return False
-    except Exception as e:
-        logger.error(f"无法创建或访问上传目录 {UPLOAD_FOLDER}: {e}")
-        return False
-
-# 初始化上传目录
-UPLOAD_DIR_WRITABLE = ensure_upload_directory()
 
 def extract_secret_from_otpauth(url):
     """从 otpauth URL 中提取密钥"""
@@ -366,50 +338,6 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def save_uploaded_image(file, client_ip):
-    """保存上传的图片到服务器"""
-    global UPLOAD_DIR_WRITABLE
-    
-    # 如果目录不可写，直接返回
-    if not UPLOAD_DIR_WRITABLE:
-        logger.debug(f"[{client_ip}] 上传目录不可写，跳过保存")
-        return None, None
-    
-    try:
-        # 确保目录存在（可能在运行时被删除）
-        Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
-        
-        # 生成唯一文件名：时间戳_IP_原始文件名
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        safe_ip = client_ip.replace('.', '_').replace(':', '_')
-        original_filename = secure_filename(file.filename) if file.filename else 'unknown'
-        
-        # 获取文件扩展名
-        if '.' in original_filename:
-            ext = original_filename.rsplit('.', 1)[1].lower()
-        else:
-            ext = 'png'  # 默认扩展名
-        
-        # 生成新文件名
-        filename = f"{timestamp}_{safe_ip}_{original_filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        
-        # 保存文件
-        file.save(filepath)
-        
-        file_size = os.path.getsize(filepath)
-        logger.info(f"[{client_ip}] 图片已保存: {filename} ({file_size} 字节)")
-        
-        return filepath, filename
-    except PermissionError as e:
-        logger.error(f"[{client_ip}] 保存图片权限错误: {str(e)}")
-        # 尝试重新检查目录权限
-        UPLOAD_DIR_WRITABLE = ensure_upload_directory()
-        return None, None
-    except Exception as e:
-        logger.error(f"[{client_ip}] 保存图片失败: {str(e)}", exc_info=True)
-        return None, None
-
 @app.route('/api/convert', methods=['POST'])
 def convert_qr():
     client_ip = request.remote_addr
@@ -436,17 +364,6 @@ def convert_qr():
         file_size = len(image_data)
         logger.info(f"[{client_ip}] 开始解析二维码，文件名: {file.filename}, 大小: {file_size} 字节")
         
-        # 保存图片到服务器
-        file.seek(0)  # 重置文件指针以便保存
-        saved_path, saved_filename = save_uploaded_image(file, client_ip)
-        
-        if not saved_path:
-            logger.warning(f"[{client_ip}] 图片保存失败，但继续处理")
-        
-        # 重置文件指针以便解析
-        file.seek(0)
-        image_data = file.read()
-        
         # 解析二维码
         result, error = parse_qr_code(image_data)
         
@@ -471,27 +388,21 @@ def convert_qr():
                         'type': account.get('type', 'TOTP')
                     })
                     logger.debug(f"[{client_ip}] 账户: {account.get('name', '未知')} ({account.get('issuer', '未知')})")
-                response_data = {
+                return jsonify({
                     'success': True,
                     'is_migration': True,
                     'accounts': formatted_accounts,
                     'count': len(formatted_accounts)
-                }
-                if saved_filename:
-                    response_data['saved_file'] = saved_filename
-                return jsonify(response_data)
+                })
             else:
                 logger.info(f"[{client_ip}] 成功提取单个密钥")
                 # 单个密钥（标准格式）
-                response_data = {
+                return jsonify({
                     'success': True,
                     'is_migration': False,
                     'secret': result,
                     'formatted_secret': format_secret(result)
-                }
-                if saved_filename:
-                    response_data['saved_file'] = saved_filename
-                return jsonify(response_data)
+                })
         else:
             logger.warning(f"[{client_ip}] 无法提取密钥")
             return jsonify({'success': False, 'error': '无法提取密钥'}), 400

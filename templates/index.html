@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Authenticator 二维码转密钥</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 12px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-area {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .preview-area.show {
+            display: block;
+        }
+
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-area {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-area.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .accounts-list {
+            margin-top: 20px;
+        }
+
+        .account-item {
+            background: #f8f9ff;
+            border: 2px solid #e0e4ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 15px;
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .account-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .account-issuer {
+            color: #666;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .account-info {
+            color: #999;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .account-secret {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: #333;
+            word-break: break-all;
+            text-align: center;
+            letter-spacing: 2px;
+            margin: 12px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .account-copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .account-copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .account-copy-btn.copied {
+            background: #4caf50;
+        }
+
+        .migration-header {
+            text-align: center;
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .secret-box {
+            background: #f8f9ff;
+            border: 2px solid #e0e4ff;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: #333;
+            word-break: break-all;
+            text-align: center;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .copy-btn.copied {
+            background: #4caf50;
+        }
+
+        .error-message {
+            background: #ffebee;
+            border: 2px solid #ffcdd2;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 二维码转密钥</h1>
+        <p class="subtitle">将 Google Authenticator 二维码转换为 2FA 密钥</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">点击或拖拽上传二维码图片</div>
+            <div class="upload-hint">支持 PNG、JPG、JPEG 格式</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="preview-area" id="previewArea">
+            <img id="previewImage" class="preview-image" alt="预览">
+        </div>
+
+        <button class="btn" id="convertBtn" disabled>转换</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">正在解析二维码...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="result-area" id="resultArea">
+            <div class="result-label" id="resultLabel">提取的密钥：</div>
+            <div class="secret-box" id="secretBox"></div>
+            <button class="copy-btn" id="copyBtn">复制密钥</button>
+            <div class="accounts-list" id="accountsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
+        const previewImage = document.getElementById('previewImage');
+        const convertBtn = document.getElementById('convertBtn');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultArea = document.getElementById('resultArea');
+        const secretBox = document.getElementById('secretBox');
+        const copyBtn = document.getElementById('copyBtn');
+        const resultLabel = document.getElementById('resultLabel');
+        const accountsList = document.getElementById('accountsList');
+
+        let selectedFile = null;
+
+        // 点击上传区域
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showError('请上传图片文件');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewArea.classList.add('show');
+                convertBtn.disabled = false;
+                hideError();
+                hideResult();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 转换按钮
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+
+            showLoading();
+            hideError();
+            hideResult();
+            convertBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.is_migration && data.accounts) {
+                        // 迁移格式：显示多个账户
+                        displayAccounts(data.accounts);
+                    } else {
+                        // 单个密钥
+                        displaySingleSecret(data.formatted_secret || data.secret);
+                    }
+                    resultArea.classList.add('show');
+                } else {
+                    showError(data.error || '转换失败');
+                }
+            } catch (error) {
+                showError('网络错误：' + error.message);
+            } finally {
+                hideLoading();
+                convertBtn.disabled = false;
+            }
+        });
+
+        // 复制按钮
+        copyBtn.addEventListener('click', async () => {
+            const secret = secretBox.textContent.replace(/\s/g, '');
+            try {
+                await navigator.clipboard.writeText(secret);
+                copyBtn.textContent = '✓ 已复制';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '复制密钥';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                // 降级方案
+                const textArea = document.createElement('textarea');
+                textArea.value = secret;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                copyBtn.textContent = '✓ 已复制';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '复制密钥';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }
+        });
+
+        function showLoading() {
+            loading.classList.add('show');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('show');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        function hideResult() {
+            resultArea.classList.remove('show');
+            secretBox.textContent = '';
+            accountsList.innerHTML = '';
+        }
+
+        function displaySingleSecret(secret) {
+            resultLabel.textContent = '提取的密钥：';
+            secretBox.textContent = secret;
+            secretBox.style.display = 'block';
+            copyBtn.style.display = 'block';
+            accountsList.innerHTML = '';
+        }
+
+        function displayAccounts(accounts) {
+            resultLabel.textContent = `检测到 ${accounts.length} 个账户：`;
+            secretBox.style.display = 'none';
+            copyBtn.style.display = 'none';
+            
+            accountsList.innerHTML = '';
+            
+            accounts.forEach((account, index) => {
+                const accountItem = document.createElement('div');
+                accountItem.className = 'account-item';
+                
+                const accountName = account.name || `账户 ${index + 1}`;
+                const accountIssuer = account.issuer ? ` (${account.issuer})` : '';
+                const accountInfo = `${account.type} | ${account.algorithm} | ${account.digits} 位`;
+                
+                accountItem.innerHTML = `
+                    <div class="account-header">
+                        <div>
+                            <div class="account-name">${accountName}${accountIssuer}</div>
+                            <div class="account-info">${accountInfo}</div>
+                        </div>
+                    </div>
+                    <div class="account-secret">${account.formatted_secret || account.secret}</div>
+                    <button class="account-copy-btn" data-secret="${account.secret.replace(/\s/g, '')}">复制密钥</button>
+                `;
+                
+                accountsList.appendChild(accountItem);
+            });
+            
+            // 为每个账户的复制按钮添加事件监听
+            accountsList.querySelectorAll('.account-copy-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const secret = this.getAttribute('data-secret');
+                    try {
+                        await navigator.clipboard.writeText(secret);
+                        this.textContent = '✓ 已复制';
+                        this.classList.add('copied');
+                        setTimeout(() => {
+                            this.textContent = '复制密钥';
+                            this.classList.remove('copied');
+                        }, 2000);
+                    } catch (error) {
+                        // 降级方案
+                        const textArea = document.createElement('textarea');
+                        textArea.value = secret;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        this.textContent = '✓ 已复制';
+                        this.classList.add('copied');
+                        setTimeout(() => {
+                            this.textContent = '复制密钥';
+                            this.classList.remove('copied');
+                        }, 2000);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
+

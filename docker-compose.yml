@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  google-2fa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: google-2fa
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 如果需要持久化数据，可以添加卷
+      # - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - google-2fa-network
+
+networks:
+  google-2fa-network:
+    driver: bridge
+

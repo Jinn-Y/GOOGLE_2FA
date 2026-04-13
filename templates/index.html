@@ -11,24 +11,71 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-1: #c9d6ff;
+            --bg-2: #e2e2e2;
+            --glass: rgba(255, 255, 255, 0.22);
+            --glass-soft: rgba(255, 255, 255, 0.14);
+            --glass-strong: rgba(255, 255, 255, 0.35);
+            --text-main: #13233a;
+            --text-muted: #44607d;
+            --border: rgba(255, 255, 255, 0.42);
+            --primary: #1f7aeb;
+            --primary-strong: #155fc0;
+            --ok: #219a61;
+            --error-bg: rgba(255, 82, 82, 0.12);
+            --error-border: rgba(255, 82, 82, 0.35);
+            --error-text: #982525;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            width: 520px;
+            height: 520px;
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(6px);
+        }
+
+        body::before {
+            top: -170px;
+            left: -120px;
+            background: radial-gradient(circle at 30% 30%, rgba(84, 132, 255, 0.65), rgba(84, 132, 255, 0.05) 65%);
+        }
+
+        body::after {
+            right: -140px;
+            bottom: -180px;
+            background: radial-gradient(circle at 70% 70%, rgba(86, 197, 255, 0.58), rgba(86, 197, 255, 0.06) 65%);
         }
 
         .container {
-            background: white;
+            background: var(--glass);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 45px rgba(15, 36, 66, 0.22);
             max-width: 600px;
             width: 100%;
             padding: 40px;
             animation: fadeIn 0.5s ease-in;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(14px) saturate(145%);
+            -webkit-backdrop-filter: blur(14px) saturate(145%);
+            position: relative;
+            z-index: 1;
         }
 
         @keyframes fadeIn {
@@ -43,7 +90,7 @@
         }
 
         h1 {
-            color: #333;
+            color: var(--text-main);
             text-align: center;
             margin-bottom: 10px;
             font-size: 28px;
@@ -52,30 +99,33 @@
 
         .subtitle {
             text-align: center;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 30px;
             font-size: 14px;
         }
 
         .upload-area {
-            border: 2px dashed #667eea;
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 40px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            background: #f8f9ff;
+            background: var(--glass-soft);
             margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0f2ff;
+            border-color: rgba(255, 255, 255, 0.62);
+            background: rgba(255, 255, 255, 0.24);
+            transform: translateY(-1px);
         }
 
         .upload-area.dragover {
-            border-color: #764ba2;
-            background: #e8ebff;
+            border-color: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.3);
             transform: scale(1.02);
         }
 
@@ -85,14 +135,14 @@
         }
 
         .upload-text {
-            color: #667eea;
+            color: var(--text-main);
             font-size: 16px;
-            font-weight: 500;
+            font-weight: 600;
             margin-bottom: 8px;
         }
 
         .upload-hint {
-            color: #999;
+            color: #8a97a8;
             font-size: 12px;
         }
 
@@ -119,7 +169,7 @@
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, #4a8dff 100%);
             color: white;
             border: none;
             padding: 14px 32px;
@@ -130,11 +180,12 @@
             transition: all 0.3s ease;
             width: 100%;
             margin-top: 20px;
+            box-shadow: 0 10px 24px rgba(31, 122, 235, 0.35);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 22px rgba(15, 139, 141, 0.35);
         }
 
         .btn:active {
@@ -162,11 +213,13 @@
         }
 
         .account-item {
-            background: #f8f9ff;
-            border: 2px solid #e0e4ff;
+            background: var(--glass-soft);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 15px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .account-header {
@@ -178,18 +231,18 @@
 
         .account-name {
             font-weight: 600;
-            color: #333;
+            color: var(--text-main);
             font-size: 16px;
         }
 
         .account-issuer {
-            color: #666;
+            color: var(--text-muted);
             font-size: 14px;
             margin-top: 4px;
         }
 
         .account-info {
-            color: #999;
+            color: #7c8da1;
             font-size: 12px;
             margin-top: 8px;
         }
@@ -197,18 +250,19 @@
         .account-secret {
             font-family: 'Courier New', monospace;
             font-size: 16px;
-            color: #333;
+            color: var(--text-main);
             word-break: break-all;
             text-align: center;
             letter-spacing: 2px;
             margin: 12px 0;
             padding: 12px;
-            background: white;
+            background: var(--glass-strong);
             border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
         }
 
         .account-copy-btn {
-            background: #667eea;
+            background: var(--primary);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -221,16 +275,16 @@
         }
 
         .account-copy-btn:hover {
-            background: #5568d3;
+            background: var(--primary-strong);
         }
 
         .account-copy-btn.copied {
-            background: #4caf50;
+            background: var(--ok);
         }
 
         .migration-header {
             text-align: center;
-            color: #667eea;
+            color: var(--primary-strong);
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 20px;
@@ -248,29 +302,31 @@
         }
 
         .result-label {
-            color: #666;
+            color: var(--text-muted);
             font-size: 14px;
             margin-bottom: 8px;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         .secret-box {
-            background: #f8f9ff;
-            border: 2px solid #e0e4ff;
+            background: var(--glass-soft);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 16px;
             font-family: 'Courier New', monospace;
             font-size: 18px;
-            color: #333;
+            color: var(--text-main);
             word-break: break-all;
             text-align: center;
             letter-spacing: 2px;
             margin-bottom: 15px;
             position: relative;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .copy-btn {
-            background: #667eea;
+            background: var(--primary);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -282,21 +338,23 @@
         }
 
         .copy-btn:hover {
-            background: #5568d3;
+            background: var(--primary-strong);
         }
 
         .copy-btn.copied {
-            background: #4caf50;
+            background: var(--ok);
         }
 
         .error-message {
-            background: #ffebee;
-            border: 2px solid #ffcdd2;
-            color: #c62828;
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            color: var(--error-text);
             padding: 12px;
             border-radius: 8px;
             margin-top: 15px;
             display: none;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
 
         .error-message.show {
@@ -314,8 +372,8 @@
         }
 
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-top: 3px solid var(--primary);
             border-radius: 50%;
             width: 40px;
             height: 40px;
